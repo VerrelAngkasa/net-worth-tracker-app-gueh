@@ -1,8 +1,8 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
-COPY package.json .
+COPY . .
 
-RUN npm install
+RUN npm ci
 
 EXPOSE 3000
 
