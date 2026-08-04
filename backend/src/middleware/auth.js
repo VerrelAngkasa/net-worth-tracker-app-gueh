@@ -1,5 +1,5 @@
 const jwt = require('jsonwebtoken');
-const db = require('../db');
+const { queryOne } = require('../db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
@@ -24,7 +24,7 @@ function startSession(res, userId, idleTimeoutMinutes) {
   res.cookie('token', token, { ...COOKIE_OPTS, maxAge: idleTimeoutMinutes * 60 * 1000 });
 }
 
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   const token = req.cookies?.token;
   if (!token) {
     return res.status(401).json({ error: 'Not authenticated' });
@@ -43,7 +43,12 @@ function requireAuth(req, res, next) {
     return res.status(401).json({ error: 'Your session has expired. Please sign in again.' });
   }
 
-  const user = db.prepare('SELECT idle_timeout_minutes FROM users WHERE id = ?').get(payload.userId);
+  let user;
+  try {
+    user = await queryOne('SELECT idle_timeout_minutes FROM users WHERE id = ?', [payload.userId]);
+  } catch (err) {
+    return next(err);
+  }
   if (!user) {
     res.clearCookie('token', COOKIE_OPTS);
     return res.status(401).json({ error: 'Not authenticated' });

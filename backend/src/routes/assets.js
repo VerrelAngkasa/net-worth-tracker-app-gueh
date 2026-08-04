@@ -1,26 +1,29 @@
 const express = require('express');
-const db = require('../db');
+const { query, queryOne, run } = require('../db');
 const { requireAuth } = require('../middleware/auth');
 
 const router = express.Router();
 router.use(requireAuth);
 
-function latestValueForAsset(assetId) {
-  const row = db
-    .prepare('SELECT value, date FROM asset_values WHERE asset_id = ? ORDER BY date DESC, id DESC LIMIT 1')
-    .get(assetId);
+async function latestValueForAsset(assetId) {
+  // Insertion order (id), not date order — see utils/pockets.js for why.
+  const row = await queryOne('SELECT value, date FROM asset_values WHERE asset_id = ? ORDER BY id DESC LIMIT 1', [
+    assetId,
+  ]);
   return row ? row.value : 0;
 }
 
 // List assets with their current (latest) value and share of total assets attached
-router.get('/', (req, res) => {
+router.get('/', async (req, res) => {
   const includeArchived = req.query.includeArchived === 'true';
   let sql = 'SELECT * FROM assets WHERE user_id = ?';
-  if (!includeArchived) sql += ' AND archived = 0';
+  if (!includeArchived) sql += ' AND archived = false';
   sql += ' ORDER BY type, name';
 
-  const assets = db.prepare(sql).all(req.userId);
-  const withValues = assets.map((a) => ({ ...a, currentValue: latestValueForAsset(a.id) }));
+  const assets = await query(sql, [req.userId]);
+  const withValues = await Promise.all(
+    assets.map(async (a) => ({ ...a, currentValue: await latestValueForAsset(a.id) }))
+  );
 
   // Percentage is of total *positive* value (liabilities shown as negative, excluded from the base)
   const totalPositive = withValues.reduce((s, a) => s + (a.currentValue > 0 ? a.currentValue : 0), 0);
@@ -32,71 +35,73 @@ router.get('/', (req, res) => {
   res.json(withPercentage);
 });
 
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   const { name, type, notes, initialValue, date } = req.body || {};
   if (!name || !type) {
     return res.status(400).json({ error: 'name and type are required.' });
   }
 
-  const info = db
-    .prepare('INSERT INTO assets (user_id, name, type, notes) VALUES (?, ?, ?, ?)')
-    .run(req.userId, name, type, notes || null);
-
-  const assetId = info.lastInsertRowid;
+  const asset = await queryOne(
+    'INSERT INTO assets (user_id, name, type, notes) VALUES (?, ?, ?, ?) RETURNING *',
+    [req.userId, name, type, notes || null]
+  );
 
   if (initialValue !== undefined && initialValue !== null && initialValue !== '') {
     const val = Number(initialValue);
     if (!Number.isNaN(val)) {
-      db.prepare('INSERT INTO asset_values (asset_id, date, value) VALUES (?, ?, ?)').run(
-        assetId,
+      await run('INSERT INTO asset_values (asset_id, date, value) VALUES (?, ?, ?)', [
+        asset.id,
         date || new Date().toISOString().slice(0, 10),
-        val
-      );
+        val,
+      ]);
     }
   }
 
-  const row = db.prepare('SELECT * FROM assets WHERE id = ?').get(assetId);
-  res.status(201).json({ ...row, currentValue: latestValueForAsset(assetId) });
+  res.status(201).json({ ...asset, currentValue: await latestValueForAsset(asset.id) });
 });
 
-router.put('/:id', (req, res) => {
-  const existing = db.prepare('SELECT * FROM assets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+router.put('/:id', async (req, res) => {
+  const existing = await queryOne('SELECT * FROM assets WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!existing) return res.status(404).json({ error: 'Asset not found.' });
 
   const { name, type, notes, archived } = req.body || {};
-  db.prepare('UPDATE assets SET name = ?, type = ?, notes = ?, archived = ? WHERE id = ?').run(
-    name || existing.name,
-    type || existing.type,
-    notes !== undefined ? notes : existing.notes,
-    archived !== undefined ? (archived ? 1 : 0) : existing.archived,
-    req.params.id
+  const row = await queryOne(
+    'UPDATE assets SET name = ?, type = ?, notes = ?, archived = ? WHERE id = ? RETURNING *',
+    [
+      name || existing.name,
+      type || existing.type,
+      notes !== undefined ? notes : existing.notes,
+      archived !== undefined ? !!archived : existing.archived,
+      req.params.id,
+    ]
   );
 
-  const row = db.prepare('SELECT * FROM assets WHERE id = ?').get(req.params.id);
-  res.json({ ...row, currentValue: latestValueForAsset(row.id) });
+  res.json({ ...row, currentValue: await latestValueForAsset(row.id) });
 });
 
-router.delete('/:id', (req, res) => {
-  const existing = db.prepare('SELECT * FROM assets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+router.delete('/:id', async (req, res) => {
+  const existing = await queryOne('SELECT * FROM assets WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!existing) return res.status(404).json({ error: 'Asset not found.' });
-  db.prepare('DELETE FROM assets WHERE id = ?').run(req.params.id);
+  await run('DELETE FROM assets WHERE id = ?', [req.params.id]);
   res.json({ ok: true });
 });
 
 // --- Value history for one asset ---
 
-router.get('/:id/values', (req, res) => {
-  const asset = db.prepare('SELECT * FROM assets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+router.get('/:id/values', async (req, res) => {
+  const asset = await queryOne('SELECT * FROM assets WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!asset) return res.status(404).json({ error: 'Asset not found.' });
 
-  const rows = db
-    .prepare('SELECT * FROM asset_values WHERE asset_id = ? ORDER BY date ASC, id ASC')
-    .all(req.params.id);
+  // Insertion order (id), not date order — the frontend marks the last item
+  // in this list as "current," which must match how the balance is actually
+  // computed (see utils/pockets.js) or a backdated entry could get the badge
+  // even though a later entry is the true current balance.
+  const rows = await query('SELECT * FROM asset_values WHERE asset_id = ? ORDER BY id ASC', [req.params.id]);
   res.json(rows);
 });
 
-router.post('/:id/values', (req, res) => {
-  const asset = db.prepare('SELECT * FROM assets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+router.post('/:id/values', async (req, res) => {
+  const asset = await queryOne('SELECT * FROM assets WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!asset) return res.status(404).json({ error: 'Asset not found.' });
 
   const { date, value } = req.body || {};
@@ -105,24 +110,25 @@ router.post('/:id/values', (req, res) => {
     return res.status(400).json({ error: 'date and numeric value are required.' });
   }
 
-  const info = db
-    .prepare('INSERT INTO asset_values (asset_id, date, value) VALUES (?, ?, ?)')
-    .run(req.params.id, date, val);
-
-  const row = db.prepare('SELECT * FROM asset_values WHERE id = ?').get(info.lastInsertRowid);
+  const row = await queryOne('INSERT INTO asset_values (asset_id, date, value) VALUES (?, ?, ?) RETURNING *', [
+    req.params.id,
+    date,
+    val,
+  ]);
   res.status(201).json(row);
 });
 
-router.delete('/:id/values/:valueId', (req, res) => {
-  const asset = db.prepare('SELECT * FROM assets WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
+router.delete('/:id/values/:valueId', async (req, res) => {
+  const asset = await queryOne('SELECT * FROM assets WHERE id = ? AND user_id = ?', [req.params.id, req.userId]);
   if (!asset) return res.status(404).json({ error: 'Asset not found.' });
 
-  const value = db
-    .prepare('SELECT * FROM asset_values WHERE id = ? AND asset_id = ?')
-    .get(req.params.valueId, req.params.id);
+  const value = await queryOne('SELECT * FROM asset_values WHERE id = ? AND asset_id = ?', [
+    req.params.valueId,
+    req.params.id,
+  ]);
   if (!value) return res.status(404).json({ error: 'Value entry not found.' });
 
-  db.prepare('DELETE FROM asset_values WHERE id = ?').run(req.params.valueId);
+  await run('DELETE FROM asset_values WHERE id = ?', [req.params.valueId]);
   res.json({ ok: true });
 });
 

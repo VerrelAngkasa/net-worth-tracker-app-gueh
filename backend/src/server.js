@@ -3,7 +3,7 @@ const express = require('express');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 
-require('./db'); // ensures schema is created on boot
+const { migrate } = require('./db');
 
 const authRoutes = require('./routes/auth');
 const expenseRoutes = require('./routes/expenses');
@@ -41,6 +41,13 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Something went wrong on the server.' });
 });
 
-app.listen(PORT, () => {
-  console.log(`Net worth tracker API running on http://localhost:${PORT}`);
-});
+migrate()
+  .then(() => {
+    app.listen(PORT, () => {
+      console.log(`Net worth tracker API running on http://localhost:${PORT}`);
+    });
+  })
+  .catch((err) => {
+    console.error('Failed to set up the database schema on boot:', err);
+    process.exit(1);
+  });

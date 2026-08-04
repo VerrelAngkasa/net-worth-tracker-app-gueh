@@ -1,162 +1,195 @@
-const path = require('path');
-const fs = require('fs');
-const Database = require('better-sqlite3');
+const { Pool, types } = require('pg');
 
-const DATA_DIR = path.join(__dirname, '..', '..', 'data');
-if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-
-const DB_PATH = path.join(DATA_DIR, 'networth.sqlite');
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-db.exec(`
-CREATE TABLE IF NOT EXISTS users (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  username TEXT UNIQUE NOT NULL,
-  password_hash TEXT NOT NULL,
-  recovery_code_hash TEXT,
-  display_name TEXT,
-  idle_timeout_minutes INTEGER NOT NULL DEFAULT 15,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- One-off / daily expenses (groceries, coffee, gas, etc.)
--- asset_id, when set, is the pocket the money actually came out of —
--- adding/editing/deleting an expense with a pocket adjusts that pocket's balance.
-CREATE TABLE IF NOT EXISTS expenses (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
-  date TEXT NOT NULL,              -- YYYY-MM-DD
-  category TEXT NOT NULL,
-  description TEXT,
-  amount REAL NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Fixed monthly expenses (rent, subscriptions, insurance...)
--- asset_id is the pocket this bill is usually paid from — used as the
--- default when marking a specific month's occurrence as paid.
-CREATE TABLE IF NOT EXISTS fixed_expenses (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
-  name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  amount REAL NOT NULL,
-  day_of_month INTEGER NOT NULL DEFAULT 1, -- billing day, 1-28
-  active INTEGER NOT NULL DEFAULT 1,
-  start_date TEXT NOT NULL,         -- YYYY-MM-DD, first month it applies
-  end_date TEXT,                    -- YYYY-MM-DD or NULL if ongoing
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Records that a specific month's occurrence of a fixed expense was actually
--- paid out of a pocket. Creating one deducts the pocket's balance; deleting
--- one adds it back. One row per (fixed_expense, year, month).
-CREATE TABLE IF NOT EXISTS fixed_expense_payments (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  fixed_expense_id INTEGER NOT NULL REFERENCES fixed_expenses(id) ON DELETE CASCADE,
-  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  date TEXT NOT NULL,
-  amount REAL NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(fixed_expense_id, year, month)
-);
-
--- Assets / pockets (cash, bank, investments, property, vehicle, etc.)
-CREATE TABLE IF NOT EXISTS assets (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL,               -- cash, bank, investment, property, vehicle, crypto, other
-  notes TEXT,
-  archived INTEGER NOT NULL DEFAULT 0,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Point-in-time value snapshots for an asset (also used for liabilities: negative amount).
--- Every income entry, expense against a pocket, or transfer writes a new row here so the
--- pocket's "current balance" is always the latest snapshot.
-CREATE TABLE IF NOT EXISTS asset_values (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  date TEXT NOT NULL,               -- YYYY-MM-DD
-  value REAL NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Income landing in a specific pocket (salary, transfer in, gift, interest...)
-CREATE TABLE IF NOT EXISTS income_entries (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  date TEXT NOT NULL,
-  source TEXT NOT NULL,
-  description TEXT,
-  amount REAL NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Moving money between two pockets (e.g. Payroll -> Emergency Fund)
-CREATE TABLE IF NOT EXISTS transfers (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  from_asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  to_asset_id INTEGER NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-  date TEXT NOT NULL,
-  description TEXT,
-  amount REAL NOT NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now'))
-);
-
--- Monthly spending quota (a budget for daily expenses only, not fixed bills).
--- If no row exists for a given month, the most recent earlier month's quota
--- carries forward, same as a budget that stays put until you change it.
--- asset_id, when set, narrows the quota to only count daily expenses drawn
--- from that one pocket; NULL means it counts daily expenses from any pocket.
-CREATE TABLE IF NOT EXISTS spending_quotas (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  year INTEGER NOT NULL,
-  month INTEGER NOT NULL,
-  amount REAL NOT NULL,
-  asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL,
-  created_at TEXT NOT NULL DEFAULT (datetime('now')),
-  UNIQUE(user_id, year, month)
-);
-
-CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, date);
-CREATE INDEX IF NOT EXISTS idx_expenses_asset ON expenses(asset_id);
-CREATE INDEX IF NOT EXISTS idx_fixed_expenses_user ON fixed_expenses(user_id);
-CREATE INDEX IF NOT EXISTS idx_fixed_expense_payments_lookup ON fixed_expense_payments(fixed_expense_id, year, month);
-CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id);
-CREATE INDEX IF NOT EXISTS idx_asset_values_asset_date ON asset_values(asset_id, date);
-CREATE INDEX IF NOT EXISTS idx_income_user_date ON income_entries(user_id, date);
-CREATE INDEX IF NOT EXISTS idx_transfers_user_date ON transfers(user_id, date);
-CREATE INDEX IF NOT EXISTS idx_quotas_user_period ON spending_quotas(user_id, year, month);
-`);
-
-// Lightweight migrations: add columns that newer versions of the app need,
-// without touching any existing data, for people upgrading an existing database.
-function hasColumn(table, column) {
-  return db.prepare(`PRAGMA table_info(${table})`).all().some((c) => c.name === column);
-}
-if (!hasColumn('users', 'recovery_code_hash')) {
-  db.exec('ALTER TABLE users ADD COLUMN recovery_code_hash TEXT');
-}
-if (!hasColumn('spending_quotas', 'asset_id')) {
-  db.exec('ALTER TABLE spending_quotas ADD COLUMN asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL');
-}
-if (!hasColumn('fixed_expenses', 'asset_id')) {
-  db.exec('ALTER TABLE fixed_expenses ADD COLUMN asset_id INTEGER REFERENCES assets(id) ON DELETE SET NULL');
-}
-if (!hasColumn('users', 'idle_timeout_minutes')) {
-  db.exec('ALTER TABLE users ADD COLUMN idle_timeout_minutes INTEGER NOT NULL DEFAULT 15');
+if (!process.env.DATABASE_URL) {
+  throw new Error(
+    'DATABASE_URL is not set. Point it at your Supabase Postgres connection string ' +
+      '(use the "Transaction" pooler connection string, port 6543, if deploying to a serverless environment like Lambda).'
+  );
 }
 
-module.exports = db;
+// node-postgres returns BIGINT and NUMERIC as strings by default, since both
+// can hold values that don't fit safely in a JS number. This app's IDs and
+// amounts never get remotely close to that range, and the whole codebase
+// does plain arithmetic on them (e.g. `total += row.amount`), which silently
+// turns into string concatenation instead of addition without this fix.
+// DATE/TIMESTAMP are also overridden to stay as plain strings instead of
+// being parsed into JS Date objects, which avoids local-timezone shifting
+// a stored "2026-07-05" into "2026-07-04" depending on the server's TZ.
+types.setTypeParser(20 /* int8 / bigint */, (val) => parseInt(val, 10));
+types.setTypeParser(1700 /* numeric */, (val) => parseFloat(val));
+types.setTypeParser(1082 /* date */, (val) => val);
+types.setTypeParser(1114 /* timestamp without time zone */, (val) => val);
+types.setTypeParser(1184 /* timestamptz */, (val) => val);
+
+// Supabase (and most managed Postgres) requires SSL. Its certs are properly
+// signed, but the pooler's chain isn't always in Node's default trust store,
+// so this defaults to permissive verification. Set DATABASE_SSL=false only
+// for a local/self-hosted Postgres you're testing against without TLS.
+const ssl = process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false };
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl,
+  max: Number(process.env.DATABASE_POOL_MAX) || 10,
+});
+
+pool.on('error', (err) => {
+  // Errors on idle clients (e.g. the pooler recycling a connection) shouldn't crash the process.
+  console.error('Unexpected error on idle Postgres client', err);
+});
+
+// This app was originally written against better-sqlite3's `?` placeholders;
+// converting them to Postgres's `$1, $2...` here means the route files below
+// barely had to change their SQL strings during the migration. Each call
+// uses an unnamed prepared statement (no `name` field), which is what makes
+// this safe to run through Supabase's transaction-mode pooler — named,
+// cached prepared statements don't work reliably across pooled connections.
+function toPgSql(sql) {
+  let i = 0;
+  return sql.replace(/\?/g, () => `$${++i}`);
+}
+
+async function query(sql, params = []) {
+  const res = await pool.query(toPgSql(sql), params);
+  return res.rows;
+}
+
+async function queryOne(sql, params = []) {
+  const rows = await query(sql, params);
+  return rows[0] || null;
+}
+
+// For INSERT/UPDATE/DELETE where you don't need rows back — returns rowCount.
+async function run(sql, params = []) {
+  const res = await pool.query(toPgSql(sql), params);
+  return { rowCount: res.rowCount };
+}
+
+async function migrate() {
+  // Dependency order matters here — unlike SQLite, Postgres validates that a
+  // FOREIGN KEY's target table already exists at CREATE TABLE time.
+  // This mirrors the schema already applied in Supabase; CREATE TABLE IF NOT
+  // EXISTS makes it a no-op there, but keeps a fresh database (local Postgres,
+  // a new Supabase project, CI) self-sufficient without a manual SQL step.
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS users (
+      id BIGSERIAL PRIMARY KEY,
+      username TEXT NOT NULL UNIQUE,
+      password_hash TEXT NOT NULL,
+      recovery_code_hash TEXT,
+      display_name TEXT,
+      idle_timeout_minutes INTEGER NOT NULL DEFAULT 15,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS assets (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      name TEXT NOT NULL,
+      type TEXT NOT NULL,
+      notes TEXT,
+      archived BOOLEAN NOT NULL DEFAULT FALSE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS asset_values (
+      id BIGSERIAL PRIMARY KEY,
+      asset_id BIGINT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      date DATE NOT NULL,
+      value NUMERIC(15,2) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS expenses (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+      date DATE NOT NULL,
+      category TEXT NOT NULL,
+      description TEXT,
+      amount NUMERIC(15,2) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS fixed_expenses (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+      name TEXT NOT NULL,
+      category TEXT NOT NULL,
+      amount NUMERIC(15,2) NOT NULL,
+      day_of_month INTEGER NOT NULL DEFAULT 1,
+      active BOOLEAN NOT NULL DEFAULT TRUE,
+      start_date DATE NOT NULL,
+      end_date DATE,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS fixed_expense_payments (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      fixed_expense_id BIGINT NOT NULL REFERENCES fixed_expenses(id) ON DELETE CASCADE,
+      asset_id BIGINT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      date DATE NOT NULL,
+      amount NUMERIC(15,2) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (fixed_expense_id, year, month)
+    );
+
+    CREATE TABLE IF NOT EXISTS income_entries (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      asset_id BIGINT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      date DATE NOT NULL,
+      source TEXT NOT NULL,
+      description TEXT,
+      amount NUMERIC(15,2) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS transfers (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      from_asset_id BIGINT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      to_asset_id BIGINT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
+      date DATE NOT NULL,
+      description TEXT,
+      amount NUMERIC(15,2) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS spending_quotas (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      year INTEGER NOT NULL,
+      month INTEGER NOT NULL,
+      amount NUMERIC(15,2) NOT NULL,
+      asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE (user_id, year, month)
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_expenses_asset ON expenses(asset_id);
+    CREATE INDEX IF NOT EXISTS idx_fixed_expenses_user ON fixed_expenses(user_id);
+    CREATE INDEX IF NOT EXISTS idx_fixed_expense_payments_lookup ON fixed_expense_payments(fixed_expense_id, year, month);
+    CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id);
+    CREATE INDEX IF NOT EXISTS idx_asset_values_asset_date ON asset_values(asset_id, date);
+    CREATE INDEX IF NOT EXISTS idx_income_user_date ON income_entries(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_transfers_user_date ON transfers(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_quotas_user_period ON spending_quotas(user_id, year, month);
+  `);
+
+  // Idempotent column additions for people upgrading an existing database —
+  // Postgres supports IF NOT EXISTS directly, so no manual existence check needed.
+  await pool.query(`
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash TEXT;
+    ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_timeout_minutes INTEGER NOT NULL DEFAULT 15;
+    ALTER TABLE spending_quotas ADD COLUMN IF NOT EXISTS asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL;
+    ALTER TABLE fixed_expenses ADD COLUMN IF NOT EXISTS asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL;
+  `);
+}
+
+module.exports = { pool, query, queryOne, run, migrate };

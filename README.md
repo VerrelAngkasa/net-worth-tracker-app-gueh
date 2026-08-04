@@ -4,16 +4,14 @@ A self-hosted, single-user app for tracking pockets of money (bank accounts,
 savings, investments), logging income and expenses against them, and
 generating monthly reports. Amounts are shown in Indonesian Rupiah (IDR).
 
-- **Backend:** Node.js + Express + SQLite (better-sqlite3), JWT auth in an httpOnly cookie
+- **Backend:** Node.js + Express + Postgres (via [Supabase](https://supabase.com)), JWT auth in an httpOnly cookie
 - **Frontend:** React + Vite + Tailwind CSS, Recharts for charts
-
-All data is stored locally in a SQLite file — nothing leaves your machine.
 
 ## Project structure
 
 ```
 networth-tracker/
-├── backend/     Express API + SQLite database
+├── backend/     Express API, connects to a Supabase Postgres database
 └── frontend/    React app (Vite)
 ```
 
@@ -21,21 +19,38 @@ networth-tracker/
 
 - Node.js 18 or newer (check with `node -v`)
 - npm (comes with Node)
+- A [Supabase](https://supabase.com) project (free tier is enough)
 
-## 2. Set up the backend
+## 2. Set up the database
+
+1. Create a project at [supabase.com](https://supabase.com) (or use an
+   existing one).
+2. In the Supabase dashboard, go to **Project Settings → Database →
+   Connection string**, and copy the **Transaction pooler** string (port
+   `6543`) — not the direct connection (port `5432`). The pooler is required
+   if you ever deploy this behind something serverless (e.g. AWS Lambda),
+   and works fine for local development too.
+3. The app creates its own tables on boot (`CREATE TABLE IF NOT EXISTS`), so
+   you don't have to run any SQL by hand. If you'd rather set the schema up
+   yourself first, the exact schema it expects is in
+   `backend/src/db/index.js`'s `migrate()` function.
+
+## 3. Set up the backend
 
 ```bash
 cd backend
 npm install
 ```
 
-Open `.env` and set `JWT_SECRET` to a long random string (used to sign login
-sessions). A placeholder is included — replace it before real use:
+Open `.env` and fill in your Supabase connection string and a real
+`JWT_SECRET`:
 
 ```
 PORT=3000
 JWT_SECRET=change_this_to_a_long_random_string_before_real_use
 NODE_ENV=development
+DATABASE_URL=postgresql://postgres.xxxxxxxxxxxx:[YOUR-PASSWORD]@aws-0-xx-xxxx-1.pooler.supabase.com:6543/postgres
+CLIENT_ORIGIN=http://localhost:5173
 ```
 
 Start the API:
@@ -46,11 +61,16 @@ npm run dev      # auto-restarts on changes, via nodemon
 npm start        # plain node
 ```
 
-The API runs at `http://localhost:3000`. On first boot it creates a SQLite
-database at `backend/data/networth.sqlite` and the tables it needs — no manual
-migration step required.
+The API runs at `http://localhost:3000`, and applies its schema against your
+Supabase database on boot before it starts listening.
 
-## 3. Set up the frontend
+**A note on connection pooling**: the transaction-mode pooler doesn't support
+named prepared statements shared across connections. Every query in this app
+uses unnamed statements for exactly this reason — worth knowing if you add
+new queries, since some ORMs default to named/cached prepared statements and
+will break against the pooler.
+
+## 4. Set up the frontend
 
 In a second terminal:
 
@@ -63,7 +83,7 @@ npm run dev
 The app runs at `http://localhost:5173` and proxies API requests to the
 backend automatically (see `frontend/vite.config.js`).
 
-## 4. First run
+## 5. First run
 
 Open `http://localhost:5173`. Since this is a single-user app, the first time
 you open it you'll be asked to create the one account for your ledger — a
@@ -81,7 +101,7 @@ for your username and that code — no email required. Using it to reset your
 password issues a new recovery code automatically, since the old one is spent
 the moment it's used.
 
-## 5. The pocket model
+## 6. The pocket model
 
 This app is built around **pockets** — the Assets page is really a list of
 accounts you move money in and out of (Payroll Account, Emergency Fund,
@@ -131,7 +151,7 @@ snapshot recorded for it, and delete individual entries — the most recent
 remaining one becomes the pocket's current balance. This is the way to
 correct a wrong amount without needing to archive the whole asset.
 
-## 6. Using the app
+## 7. Using the app
 
 - **Dashboard** — net worth headline, 12-month trend, and quick totals for
   assets, liabilities, income this month, and spending this month.
@@ -152,12 +172,15 @@ correct a wrong amount without needing to archive the whole asset.
   filter the tables below), the asset breakdown with percentages, and full
   expense listings for the month.
 
-## 7. Backing up your data
+## 8. Backing up your data
 
-Everything lives in one file: `backend/data/networth.sqlite`. Copy that file
-somewhere safe to back up your ledger, or copy it back to restore.
+Your data lives in Supabase's Postgres database, not on your machine.
+Supabase takes automatic daily backups on paid plans; on the free tier,
+export your data yourself from **Project Settings → Database → Backups**,
+or run `pg_dump` against your connection string periodically if you want
+your own copy outside Supabase entirely.
 
-## 8. Running it long-term
+## 9. Running it long-term
 
 For everyday personal use, running `npm run dev` in both folders whenever you
 want to use the app is enough. If you'd like it to run in the background or
