@@ -1,11 +1,11 @@
-name: Deploy Backend to AWS ECS
+name: Deploy Backend to AWS Lmabda function
 
 on:
   push:
     tags:
       - be-v*
 
-env:                
+env:
   ECR_REPOSITORY: net-worth-tracker-gueh
 
 permissions:
