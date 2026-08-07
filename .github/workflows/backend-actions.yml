@@ -1,4 +1,4 @@
-name: Deploy Backend to AWS Lmabda function
+name: Deploy Backend to AWS Lambda function
 
 on:
   push:
