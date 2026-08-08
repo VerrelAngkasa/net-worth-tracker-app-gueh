@@ -3,7 +3,7 @@ name: Deploy Backend to AWS Lambda function
 on:
   push:
     tags:
-      - be-v*
+      - be-*
 
 env:
   ECR_REPOSITORY: net-worth-tracker-gueh
