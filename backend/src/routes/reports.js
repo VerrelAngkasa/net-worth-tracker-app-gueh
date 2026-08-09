@@ -29,13 +29,11 @@ async function netWorthAsOf(userId, date) {
 }
 
 async function fixedExpensesForMonth(userId, monthStart, monthEnd) {
-  return query(
-    `SELECT * FROM fixed_expenses
-     WHERE user_id = ? AND active = true
-       AND start_date <= ?
-       AND (end_date IS NULL OR end_date >= ?)`,
-    [userId, monthEnd, monthStart]
-  );
+  return query('SELECT * FROM fixed_expenses WHERE user_id = ? AND date >= ? AND date <= ? ORDER BY date', [
+    userId,
+    monthStart,
+    monthEnd,
+  ]);
 }
 
 // The quota set for this exact month, or the most recent earlier one carried forward.
@@ -84,36 +82,8 @@ router.get('/monthly', async (req, res) => {
     ]);
   const currentNetWorth = currentNetWorthResult.total;
 
-  const fixedWithPayment = await Promise.all(
-    fixed.map(async (f) => {
-      const [payment, defaultAsset] = await Promise.all([
-        queryOne('SELECT * FROM fixed_expense_payments WHERE fixed_expense_id = ? AND year = ? AND month = ?', [
-          f.id,
-          year,
-          month,
-        ]),
-        f.asset_id ? queryOne('SELECT id, name FROM assets WHERE id = ?', [f.asset_id]) : null,
-      ]);
-      const paidFromAsset = payment ? await queryOne('SELECT id, name FROM assets WHERE id = ?', [payment.asset_id]) : null;
-      return {
-        ...f,
-        defaultAssetName: defaultAsset ? defaultAsset.name : null,
-        payment: payment
-          ? {
-              id: payment.id,
-              assetId: payment.asset_id,
-              assetName: paidFromAsset ? paidFromAsset.name : null,
-              date: payment.date,
-              amount: payment.amount,
-            }
-          : null,
-      };
-    })
-  );
-
   const totalDaily = dailyExpenses.reduce((s, e) => s + e.amount, 0);
   const totalFixed = fixed.reduce((s, e) => s + e.amount, 0);
-  const totalFixedPaid = fixedWithPayment.reduce((s, f) => s + (f.payment ? f.payment.amount : 0), 0);
   const totalIncome = income.reduce((s, e) => s + e.amount, 0);
 
   const byCategoryMap = {};
@@ -163,12 +133,11 @@ router.get('/monthly', async (req, res) => {
     month,
     range: { start, end },
     dailyExpenses,
-    fixedExpenses: fixedWithPayment,
+    fixedExpenses: fixed,
     income,
     totals: {
       daily: totalDaily,
       fixed: totalFixed,
-      fixedPaid: totalFixedPaid,
       combined: totalDaily + totalFixed,
       income: totalIncome,
       net: totalIncome - (totalDaily + totalFixed),

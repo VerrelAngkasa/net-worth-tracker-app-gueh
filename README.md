@@ -117,24 +117,26 @@ want to include in net worth.
   If you pick "Emergency Fund," only that pocket's balance goes down — your
   other pockets are untouched. Leave it as "None" to just log the spend
   without affecting any pocket balance.
-- **Fixed Expenses** — recurring monthly bills (rent, subscriptions). Each
-  one can have a default pocket it's usually paid from. The recurring rule
-  itself doesn't touch a pocket balance automatically (there's no scheduler),
-  but on the Monthly Report you can **mark a given month's bill as paid**,
-  which deducts that pocket right away — same as a real transaction — and can
-  be undone if you tap it by mistake. This never affects your spending quota,
-  which only ever looks at Daily Expenses.
+- **Fixed Expenses** — bills you pay each month (rent, subscriptions,
+  insurance). Each entry belongs to one specific month with its own date, so
+  editing or deleting July's rent never touches June's or August's — unlike a
+  recurring "rule" shared across months. Pick a pocket and it's deducted
+  right away, exactly like a Daily Expense, just filed separately so it
+  doesn't count against your spending quota. Since there's no rule to repeat
+  a bill automatically, **"Copy last month's bills to this month"** on the
+  Fixed Expenses page duplicates last month's entries into the current one
+  in a single click, each as its own independent entry you can then edit
+  freely.
 - **Spending quota** — an optional monthly budget, set from the Monthly
   Report page. It's reduced only by **Daily Expenses** — fixed bills never
-  count against it, even after being marked as paid from a pocket, since a
-  quota is meant to track discretionary spending. You can also tie a quota to
-  one specific pocket (e.g. your everyday "Spending Account") so it only
-  counts expenses drawn from that pocket — spending from Emergency Fund or
-  Travel pockets won't touch it. Leave it as "All daily expenses" to count
-  every daily expense regardless of pocket. If you don't set a quota for a
-  given month, the most recent earlier one (amount and pocket) carries
-  forward automatically; setting a new one for a month overrides that just
-  for that month onward.
+  count against it, since a quota is meant to track discretionary spending.
+  You can also tie a quota to one specific pocket (e.g. your everyday
+  "Spending Account") so it only counts expenses drawn from that pocket —
+  spending from Emergency Fund or Travel pockets won't touch it. Leave it as
+  "All daily expenses" to count every daily expense regardless of pocket. If
+  you don't set a quota for a given month, the most recent earlier one
+  (amount and pocket) carries forward automatically; setting a new one for a
+  month overrides that just for that month onward.
 
 Every pocket's "current value" is always its most recent recorded balance.
 Income, transfers, and pocket-linked expenses all write a new balance
@@ -156,7 +158,8 @@ correct a wrong amount without needing to archive the whole asset.
 - **Dashboard** — net worth headline, 12-month trend, and quick totals for
   assets, liabilities, income this month, and spending this month.
 - **Daily Expenses** — one-off spending with an optional pocket.
-- **Fixed Expenses** — recurring monthly items; pause instead of delete.
+- **Fixed Expenses** — one independent entry per month; use "Copy last
+  month's bills" to carry recurring ones forward without linking months.
 - **Income** — money landing in a pocket, with a source (Salary, Bonus, etc).
 - **Transfers** — move money between two pockets.
 - **Assets** — every pocket and asset, with percentage of total, value

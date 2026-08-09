@@ -65,7 +65,76 @@ async function run(sql, params = []) {
   return { rowCount: res.rowCount };
 }
 
+async function hasColumn(table, column) {
+  const row = await queryOne(
+    `SELECT 1 FROM information_schema.columns WHERE table_name = ? AND column_name = ?`,
+    [table, column]
+  );
+  return !!row;
+}
+
+async function hasTable(table) {
+  const row = await queryOne(`SELECT 1 FROM information_schema.tables WHERE table_name = ?`, [table]);
+  return !!row;
+}
+
 async function migrate() {
+  // One-time migration off the old model, run BEFORE the schema batch below —
+  // that batch creates an index on fixed_expenses(date), which doesn't exist
+  // yet on an old-shape table, so this has to land first or CREATE INDEX fails.
+  //
+  // Fixed expenses used to be recurring rule templates
+  // (day_of_month/active/start_date/end_date) shared across every month they
+  // applied to, with a separate fixed_expense_payments table tracking which
+  // months were actually paid. That meant editing or deleting one month's
+  // bill could affect every other month using the same rule. This flattens it
+  // to one independent row per month, like Daily Expenses — each historical
+  // "marked as paid" record becomes a concrete entry; rule-months that were
+  // never marked paid have no transaction to carry over, so they're dropped.
+  if (await hasColumn('fixed_expenses', 'day_of_month')) {
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(`
+        CREATE TABLE fixed_expenses_new (
+          id BIGSERIAL PRIMARY KEY,
+          user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+          date DATE NOT NULL,
+          category TEXT NOT NULL,
+          name TEXT NOT NULL,
+          amount NUMERIC(15,2) NOT NULL,
+          created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+      `);
+      if (await hasTable('fixed_expense_payments')) {
+        await client.query(`
+          INSERT INTO fixed_expenses_new (user_id, asset_id, date, category, name, amount, created_at)
+          SELECT p.user_id, p.asset_id, p.date, fe.category, fe.name, p.amount, p.created_at
+          FROM fixed_expense_payments p
+          JOIN fixed_expenses fe ON fe.id = p.fixed_expense_id;
+        `);
+        await client.query('DROP TABLE fixed_expense_payments;');
+      }
+      await client.query('DROP TABLE fixed_expenses;');
+      await client.query('ALTER TABLE fixed_expenses_new RENAME TO fixed_expenses;');
+      await client.query('ALTER SEQUENCE fixed_expenses_new_id_seq RENAME TO fixed_expenses_id_seq;');
+      await client.query('ALTER TABLE fixed_expenses RENAME CONSTRAINT fixed_expenses_new_pkey TO fixed_expenses_pkey;');
+      await client.query(
+        'ALTER TABLE fixed_expenses RENAME CONSTRAINT fixed_expenses_new_asset_id_fkey TO fixed_expenses_asset_id_fkey;'
+      );
+      await client.query(
+        'ALTER TABLE fixed_expenses RENAME CONSTRAINT fixed_expenses_new_user_id_fkey TO fixed_expenses_user_id_fkey;'
+      );
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+  }
+
   // Dependency order matters here — unlike SQLite, Postgres validates that a
   // FOREIGN KEY's target table already exists at CREATE TABLE time.
   // This mirrors the schema already applied in Supabase; CREATE TABLE IF NOT
@@ -111,31 +180,19 @@ async function migrate() {
       created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
+    -- Independent, per-date entries — no recurring rule behind these, unlike
+    -- the old model. Each row is its own month's bill, so editing or deleting
+    -- one never affects any other month. "Copy last month's bills" (see
+    -- routes/fixedExpenses.js) exists as a convenience instead of a rule.
     CREATE TABLE IF NOT EXISTS fixed_expenses (
       id BIGSERIAL PRIMARY KEY,
       user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
       asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL,
-      name TEXT NOT NULL,
-      category TEXT NOT NULL,
-      amount NUMERIC(15,2) NOT NULL,
-      day_of_month INTEGER NOT NULL DEFAULT 1,
-      active BOOLEAN NOT NULL DEFAULT TRUE,
-      start_date DATE NOT NULL,
-      end_date DATE,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-    );
-
-    CREATE TABLE IF NOT EXISTS fixed_expense_payments (
-      id BIGSERIAL PRIMARY KEY,
-      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-      fixed_expense_id BIGINT NOT NULL REFERENCES fixed_expenses(id) ON DELETE CASCADE,
-      asset_id BIGINT NOT NULL REFERENCES assets(id) ON DELETE CASCADE,
-      year INTEGER NOT NULL,
-      month INTEGER NOT NULL,
       date DATE NOT NULL,
+      category TEXT NOT NULL,
+      name TEXT NOT NULL,
       amount NUMERIC(15,2) NOT NULL,
-      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE (fixed_expense_id, year, month)
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
     );
 
     CREATE TABLE IF NOT EXISTS income_entries (
@@ -173,8 +230,8 @@ async function migrate() {
 
     CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_expenses_asset ON expenses(asset_id);
-    CREATE INDEX IF NOT EXISTS idx_fixed_expenses_user ON fixed_expenses(user_id);
-    CREATE INDEX IF NOT EXISTS idx_fixed_expense_payments_lookup ON fixed_expense_payments(fixed_expense_id, year, month);
+    CREATE INDEX IF NOT EXISTS idx_fixed_expenses_user_date ON fixed_expenses(user_id, date);
+    CREATE INDEX IF NOT EXISTS idx_fixed_expenses_asset ON fixed_expenses(asset_id);
     CREATE INDEX IF NOT EXISTS idx_assets_user ON assets(user_id);
     CREATE INDEX IF NOT EXISTS idx_asset_values_asset_date ON asset_values(asset_id, date);
     CREATE INDEX IF NOT EXISTS idx_income_user_date ON income_entries(user_id, date);
@@ -188,7 +245,6 @@ async function migrate() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS recovery_code_hash TEXT;
     ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_timeout_minutes INTEGER NOT NULL DEFAULT 15;
     ALTER TABLE spending_quotas ADD COLUMN IF NOT EXISTS asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL;
-    ALTER TABLE fixed_expenses ADD COLUMN IF NOT EXISTS asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL;
   `);
 }
 

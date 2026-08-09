@@ -274,31 +274,38 @@ export default function Reports() {
 
           <div>
             <h2 className="font-display text-lg font-bold text-ink mb-4">Fixed expenses this month</h2>
-            <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-              <table className="w-full text-sm">
-                <tbody>
-                  {visibleFixed.length === 0 ? (
-                    <tr>
-                      <td className="px-4 py-6 text-slate text-center">
-                        {selectedCategory ? `No fixed expenses in ${selectedCategory}.` : 'No fixed expenses applied this month.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    visibleFixed.map((f) => (
-                      <FixedExpenseRow
-                        key={f.id}
-                        f={f}
-                        year={year}
-                        month={month}
-                        assets={assets}
-                        categoryColor={categoryColor}
-                        onSaved={(updated) => setReport(updated)}
-                      />
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
+            {visibleFixed.length === 0 ? (
+              <p className="text-slate text-sm bg-card border border-line rounded-2xl shadow-sm p-6 text-center">
+                {selectedCategory ? `No fixed expenses in ${selectedCategory}.` : 'No fixed expenses this month.'}
+              </p>
+            ) : (
+              <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+                <table className="w-full text-sm">
+                  <tbody>
+                    {visibleFixed.map((f) => (
+                      <tr key={f.id} className="border-t border-line/70 first:border-t-0">
+                        <td className="px-4 py-2.5 text-ink">{f.date}</td>
+                        <td className="px-4 py-2.5 text-ink font-semibold">{f.name}</td>
+                        <td className="px-4 py-2.5">
+                          <span
+                            className="text-xs px-2 py-0.5 rounded-full text-white"
+                            style={{ backgroundColor: categoryColor[f.category] || '#6B7280' }}
+                          >
+                            {f.category}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 text-slate text-xs">
+                          {assets.find((a) => a.id === f.asset_id)?.name || '—'}
+                        </td>
+                        <td className="px-4 py-2.5 text-right font-mono mono-num text-ink">
+                          <Money value={f.amount} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
           <div>
@@ -492,110 +499,3 @@ function QuotaCard({ report, year, month, assets, onSaved }) {
   );
 }
 
-function FixedExpenseRow({ f, year, month, assets, categoryColor, onSaved }) {
-  const [markingPaid, setMarkingPaid] = useState(false);
-  const [assetId, setAssetId] = useState(f.asset_id ? String(f.asset_id) : '');
-  const [error, setError] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-
-  const refresh = async () => {
-    const res = await api.get(`/reports/monthly?year=${year}&month=${month}`);
-    onSaved(res.data);
-  };
-
-  const onMarkPaid = async (e) => {
-    e.preventDefault();
-    setError('');
-    if (!assetId) {
-      setError('Choose a pocket.');
-      return;
-    }
-    setSubmitting(true);
-    try {
-      const today = new Date().toISOString().slice(0, 10);
-      await api.post(`/fixed-expenses/${f.id}/pay`, { year, month, date: today, assetId });
-      setMarkingPaid(false);
-      await refresh();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Could not mark as paid.');
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const onUndo = async () => {
-    setSubmitting(true);
-    try {
-      await api.delete(`/fixed-expenses/${f.id}/pay/${f.payment.id}`);
-      await refresh();
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return (
-    <tr className="border-t border-line/70 first:border-t-0">
-      <td className="px-4 py-2.5 text-ink font-semibold align-top">{f.name}</td>
-      <td className="px-4 py-2.5 align-top">
-        <span
-          className="text-xs px-2 py-0.5 rounded-full text-white"
-          style={{ backgroundColor: categoryColor[f.category] || '#6B7280' }}
-        >
-          {f.category}
-        </span>
-      </td>
-      <td className="px-4 py-2.5 align-top">
-        {f.payment ? (
-          <div className="flex items-center gap-2">
-            <span className="text-xs bg-ledger-light text-ledger px-2 py-0.5 rounded-full font-medium">
-              Paid from {f.payment.assetName}
-            </span>
-            <button onClick={onUndo} disabled={submitting} className="text-clay text-xs font-medium hover:underline">
-              Undo
-            </button>
-          </div>
-        ) : markingPaid ? (
-          <form onSubmit={onMarkPaid} className="flex flex-wrap items-center gap-2">
-            <select
-              value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-              className="border border-line rounded-lg px-2 py-1 bg-paper text-xs focus:outline-none focus:ring-2 focus:ring-primary"
-            >
-              <option value="">Choose pocket…</option>
-              {assets.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.name}
-                </option>
-              ))}
-            </select>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="text-xs bg-primary text-white font-semibold px-2.5 py-1 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-60"
-            >
-              Confirm
-            </button>
-            <button
-              type="button"
-              onClick={() => setMarkingPaid(false)}
-              className="text-xs text-slate hover:underline"
-            >
-              Cancel
-            </button>
-            {error && <p className="text-clay text-xs w-full">{error}</p>}
-          </form>
-        ) : (
-          <button
-            onClick={() => setMarkingPaid(true)}
-            className="text-xs text-primary font-semibold hover:underline"
-          >
-            Mark as paid
-          </button>
-        )}
-      </td>
-      <td className="px-4 py-2.5 text-right font-mono mono-num text-ink align-top">
-        <Money value={f.amount} />
-      </td>
-    </tr>
-  );
-}
