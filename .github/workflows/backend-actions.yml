@@ -6,8 +6,8 @@ on:
       - be-*
 
 env:
-  ECR_REPOSITORY: net-worth-tracker-gueh
-  LAMBDA_FUNCTION_NAME: networth-tracker-backend
+  ECR_REPOSITORY      : ${{ vars.ECR_REPOSITORY }}
+  LAMBDA_FUNCTION_NAME: ${{ vars.LAMBDA_FUNCTION_NAME }}
 
 permissions:
   contents: read
@@ -15,7 +15,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: production
 
     steps:
     - name: Checkout
