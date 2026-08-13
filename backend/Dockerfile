@@ -10,6 +10,4 @@ COPY . .
 
 EXPOSE 3000
 
-RUN ls -la
-
 CMD ["node", "src/server.js"]
