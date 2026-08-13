@@ -1,6 +1,6 @@
 FROM node:22-alpine
 
-COPY --from=public.ecr.aws/aws-lambda/aws-lambda-web-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+COPY --from=public.ecr.aws/awsguru/aws-lambda-adapter:latest /lambda-adapter /opt/extensions/lambda-adapter
 
 WORKDIR /app
 
