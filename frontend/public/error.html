@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex" />
+    <title>Something went wrong — MyLedger</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@600;700&family=Inter:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        --color-ink: #211f3d;
+        --color-primary: #7c5cfc;
+        --color-primary-dark: #6845e8;
+        --color-paper: #f7f5ff;
+        --color-card: #ffffff;
+        --color-slate: #6b7280;
+        --color-line: #e6e1f5;
+        --color-clay: #f0446b;
+        --color-clay-light: #fde3ea;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      html,
+      body {
+        height: 100%;
+        margin: 0;
+      }
+
+      body {
+        font-family: "Inter", ui-sans-serif, system-ui, sans-serif;
+        color: var(--color-ink);
+        background:
+          radial-gradient(circle at 8% 0%, rgba(124, 92, 252, 0.1), transparent 42%),
+          radial-gradient(circle at 100% 12%, rgba(15, 169, 104, 0.08), transparent 38%),
+          var(--color-paper);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+      }
+
+      .card {
+        width: 100%;
+        max-width: 420px;
+        background: var(--color-card);
+        border: 1px solid var(--color-line);
+        border-radius: 20px;
+        box-shadow: 0 20px 40px -20px rgba(33, 31, 61, 0.25);
+        padding: 40px 32px;
+        text-align: center;
+      }
+
+      .badge-logo {
+        width: 48px;
+        height: 48px;
+        margin: 0 auto 20px;
+        border-radius: 14px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, var(--color-primary) 0%, #b37cff 60%, #f5a524 120%);
+        box-shadow: 0 6px 16px -6px rgba(124, 92, 252, 0.55);
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 20px;
+        color: white;
+      }
+
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: var(--color-clay);
+        background: var(--color-clay-light);
+        border-radius: 999px;
+        padding: 5px 12px;
+        margin-bottom: 16px;
+      }
+
+      .status-pill::before {
+        content: "";
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--color-clay);
+      }
+
+      h1 {
+        font-family: "Space Grotesk", sans-serif;
+        font-weight: 700;
+        font-size: 22px;
+        margin: 0 0 10px;
+      }
+
+      p {
+        color: var(--color-slate);
+        font-size: 14px;
+        line-height: 1.6;
+        margin: 0 0 28px;
+      }
+
+      .actions {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      a.button {
+        display: block;
+        text-decoration: none;
+        font-weight: 600;
+        font-size: 14px;
+        border-radius: 12px;
+        padding: 11px 16px;
+        transition: background-color 0.15s ease, border-color 0.15s ease;
+      }
+
+      a.button.primary {
+        background: var(--color-primary);
+        color: white;
+        box-shadow: 0 8px 18px -8px rgba(124, 92, 252, 0.5);
+      }
+
+      a.button.primary:hover {
+        background: var(--color-primary-dark);
+      }
+
+      a.button.secondary {
+        background: transparent;
+        color: var(--color-ink);
+        border: 1px solid var(--color-line);
+      }
+
+      a.button.secondary:hover {
+        background: var(--color-paper);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <div class="badge-logo">L</div>
+      <p class="status-pill">Error</p>
+      <h1>Something went wrong</h1>
+      <p>
+        The page you were looking for couldn't be loaded. It may have moved, or something on our end hiccuped.
+        Your data is safe either way — nothing here touches your ledger.
+      </p>
+      <div class="actions">
+        <a class="button primary" href="/">Back to MyLedger</a>
+        <a class="button secondary" href="javascript:location.reload()">Try again</a>
+      </div>
+    </main>
+  </body>
+</html>
