@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Build Vite app
-        working-directory: /frontend
+        working-directory: frontend
         run: |
           npm install
           npm run build
