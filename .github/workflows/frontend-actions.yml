@@ -12,13 +12,23 @@ permissions:
   contents: read
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Build Vite app
+        working-directory: /frontend
+        run: |
+          npm install
+          npm run build
+
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v1
         with:
@@ -26,8 +36,5 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ vars.AWS_DEFAULT_REGION }}
 
-      - name: Build Vite App and copy to S3 bucket
-        run: |
-          npm install
-          npm run build
-          aws s3 sync frontend/dist s3://$S3_BUCKET --delete
+      - name: Sync Vite app to S3 bucket
+        run: aws s3 sync frontend/dist s3://$S3_BUCKET --delete
