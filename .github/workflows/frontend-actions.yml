@@ -1,0 +1,33 @@
+name: Deploy Frontend to AWS S3 Bucket Web-Hosting
+
+on:
+  push:
+    tags:
+      - fe-*
+
+env: 
+  S3_BUCKET: ${{ vars.BUCKET_NAME }}
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    runs-on: node-22
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ vars.AWS_DEFAULT_REGION }}
+
+      - name: Build Vite App and copy to S3 bucket
+        run: |
+          npm install
+          npm run build
+          aws s3 sync frontend/dist s3://$S3_BUCKET --delete
