@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: node-22
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout
