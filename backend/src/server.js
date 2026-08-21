@@ -44,7 +44,7 @@ app.use((err, req, res, next) => {
 migrate()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Net worth tracker API running on ${process.env.CLIENT_ORIGIN}`);
+      console.log(`Net worth tracker API running on ${process.env.API_ENDPOINT || `http://localhost:${PORT}`}`);
     });
   })
   .catch((err) => {
