@@ -25,7 +25,10 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.get('/api/health', (req, res) => res.json({ ok: true }));
+app.get('/api/health', (req, res) => {
+  console.log("Health check endpoint hit");
+  res.status(200).json({ message: 'Health check ok' });
+});
 
 app.use('/api/auth', authRoutes);
 app.use('/api/expenses', expenseRoutes);
@@ -44,7 +47,7 @@ app.use((err, req, res, next) => {
 migrate()
   .then(() => {
     app.listen(PORT, () => {
-      console.log(`Net worth tracker API running on ${process.env.API_ENDPOINT} || http://localhost:${PORT}`);
+      console.log(`Net worth tracker API running on ${process.env.API_ENDPOINT}:${PORT}`);
     });
   })
   .catch((err) => {

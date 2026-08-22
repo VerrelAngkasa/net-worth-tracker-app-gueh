@@ -10,6 +10,4 @@ COPY . .
 
 EXPOSE 3000
 
-ENV AWS_LWA_READINESS_CHECK_PATH="/api/health"
-
 CMD ["npm", "start"]
