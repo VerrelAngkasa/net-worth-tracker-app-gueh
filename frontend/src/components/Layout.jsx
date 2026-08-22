@@ -25,7 +25,7 @@ export default function Layout() {
             <div className="badge-logo w-9 h-9 flex items-center justify-center shrink-0">
               <span className="font-display text-lg font-bold text-white">L</span>
             </div>
-            <span className="font-display text-xl font-bold text-ink">MyLedger</span>
+            <span className="font-display text-xl font-bold text-ink">LedgerGueh</span>
           </div>
           <button
             onClick={toggle}

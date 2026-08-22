@@ -54,7 +54,7 @@ export default function ResetPassword() {
               <div className="badge-logo w-10 h-10 flex items-center justify-center shrink-0">
                 <span className="font-display text-xl font-bold text-white">L</span>
               </div>
-              <span className="font-display text-2xl font-bold text-ink">MyLedger</span>
+              <span className="font-display text-2xl font-bold text-ink">LedgerGueh</span>
             </div>
             <h1 className="font-display text-2xl font-medium text-ink">Password reset</h1>
             <p className="text-slate mt-2 text-sm">
@@ -96,7 +96,7 @@ export default function ResetPassword() {
             <div className="badge-logo w-10 h-10 flex items-center justify-center shrink-0">
               <span className="font-display text-xl font-bold text-white">L</span>
             </div>
-            <span className="font-display text-2xl font-bold text-ink">MyLedger</span>
+            <span className="font-display text-2xl font-bold text-ink">LedgerGueh</span>
           </div>
           <h1 className="font-display text-2xl font-medium text-ink">Reset your password</h1>
           <p className="text-slate mt-2 text-sm">Enter your username and the recovery code you saved at setup.</p>

@@ -31,7 +31,7 @@ export default function Login() {
             <div className="badge-logo w-10 h-10 flex items-center justify-center shrink-0">
               <span className="font-display text-xl font-bold text-white">L</span>
             </div>
-            <span className="font-display text-2xl font-bold text-ink">MyLedger</span>
+            <span className="font-display text-2xl font-bold text-ink">LedgerGueh</span>
           </div>
           <h1 className="font-display text-2xl font-medium text-ink">Welcome back</h1>
         </div>

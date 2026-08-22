@@ -1,4 +1,4 @@
-# MyLedger — Personal Net Worth Tracker
+# LedgerGueh — Personal Net Worth Tracker
 
 A self-hosted, single-user app for tracking pockets of money (bank accounts,
 savings, investments), logging income and expenses against them, and

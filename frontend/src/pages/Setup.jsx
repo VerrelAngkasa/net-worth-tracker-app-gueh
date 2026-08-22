@@ -51,7 +51,7 @@ export default function Setup() {
               <div className="badge-logo w-10 h-10 flex items-center justify-center shrink-0">
                 <span className="font-display text-xl font-bold text-white">L</span>
               </div>
-              <span className="font-display text-2xl font-bold text-ink">MyLedger</span>
+              <span className="font-display text-2xl font-bold text-ink">LedgerGueh</span>
             </div>
             <h1 className="font-display text-2xl font-medium text-ink">Save your recovery code</h1>
             <p className="text-slate mt-2 text-sm">
@@ -88,7 +88,7 @@ export default function Setup() {
               onClick={refresh}
               className="w-full bg-primary text-white font-semibold rounded-xl py-2.5 shadow-md shadow-primary/30 hover:bg-primary-dark transition-colors disabled:opacity-40"
             >
-              Continue to MyLedger
+              Continue to LedgerGueh
             </button>
           </div>
         </div>
@@ -104,7 +104,7 @@ export default function Setup() {
             <div className="badge-logo w-10 h-10 flex items-center justify-center shrink-0">
               <span className="font-display text-xl font-bold text-white">L</span>
             </div>
-            <span className="font-display text-2xl font-bold text-ink">MyLedger</span>
+            <span className="font-display text-2xl font-bold text-ink">LedgerGueh</span>
           </div>
           <h1 className="font-display text-2xl font-medium text-ink">Set up your ledger</h1>
           <p className="text-slate mt-2 text-sm">
