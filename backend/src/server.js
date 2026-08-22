@@ -25,7 +25,7 @@ app.use(
 app.use(express.json());
 app.use(cookieParser());
 
-app.get('/api/health', (req, res) => {
+app.get('/', (req, res) => {
   console.log("Health check endpoint hit");
   res.status(200).json({ message: 'Health check ok' });
 });
