@@ -1,13 +1,19 @@
 FROM node:22-alpine
 
+# AWS Lambda Web Adapter binary
+COPY --from=public.ecr.aws/awsgsl/aws-lambda-adapter:0.8.4 /lambda-adapter /opt/extensions/lambda-adapter
+
 WORKDIR /var/task
 
-COPY package*.json ./
+# Lambda Adapter Environment Variables
+ENV AWS_LWA_PORT=3000
+ENV AWS_LWA_READINESS_CHECK_PATH="/"
 
-RUN npm ci
+COPY package*.json ./
+RUN npm ci --omit=dev
 
 COPY . .
 
 EXPOSE 3000
 
-CMD ["npm", "start"]
+CMD ["node", "src/server.js"]
