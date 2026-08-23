@@ -198,38 +198,40 @@ export default function FixedExpenses() {
           </p>
         ) : (
           <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="ledger-rule-single text-left text-xs uppercase tracking-wider text-slate">
-                  <th className="px-4 py-2.5 font-medium">Date</th>
-                  <th className="px-4 py-2.5 font-medium">Name</th>
-                  <th className="px-4 py-2.5 font-medium">Category</th>
-                  <th className="px-4 py-2.5 font-medium">Pocket</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Amount</th>
-                  <th className="px-4 py-2.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((i) => (
-                  <tr key={i.id} className="border-t border-line/70 hover:bg-paper-dim/50">
-                    <td className="px-4 py-2.5 text-ink">{i.date}</td>
-                    <td className="px-4 py-2.5 text-ink font-medium">{i.name}</td>
-                    <td className="px-4 py-2.5">
-                      <span className="text-xs bg-paper-dim px-2 py-0.5 rounded-full text-ink">{i.category}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate text-xs">{assetName(i.asset_id) || '—'}</td>
-                    <td className="px-4 py-2.5 text-right font-mono mono-num text-ink">
-                      <Money value={i.amount} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <button onClick={() => onDelete(i.id)} className="text-clay text-xs font-medium hover:underline">
-                        Delete
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="ledger-rule-single text-left text-xs uppercase tracking-wider text-slate">
+                    <th className="px-4 py-2.5 font-medium whitespace-nowrap">Date</th>
+                    <th className="px-4 py-2.5 font-medium whitespace-nowrap">Name</th>
+                    <th className="px-4 py-2.5 font-medium whitespace-nowrap">Category</th>
+                    <th className="px-4 py-2.5 font-medium whitespace-nowrap">Pocket</th>
+                    <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Amount</th>
+                    <th className="px-4 py-2.5"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {items.map((i) => (
+                    <tr key={i.id} className="border-t border-line/70 hover:bg-paper-dim/50">
+                      <td className="px-4 py-2.5 text-ink whitespace-nowrap">{i.date}</td>
+                      <td className="px-4 py-2.5 text-ink font-medium whitespace-nowrap">{i.name}</td>
+                      <td className="px-4 py-2.5 whitespace-nowrap">
+                        <span className="text-xs bg-paper-dim px-2 py-0.5 rounded-full text-ink">{i.category}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate text-xs whitespace-nowrap">{assetName(i.asset_id) || '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-mono mono-num text-ink whitespace-nowrap">
+                        <Money value={i.amount} />
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => onDelete(i.id)} className="text-clay text-xs font-medium hover:underline">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

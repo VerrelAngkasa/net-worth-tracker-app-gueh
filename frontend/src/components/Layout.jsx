@@ -107,6 +107,7 @@ export default function Layout() {
               Sign out
             </button>
           </div>
+          <p className="text-[10px] text-slate/60 mt-3">v{__APP_VERSION__}</p>
         </div>
       </aside>
 

@@ -242,32 +242,34 @@ export default function Reports() {
             <div>
               <h2 className="font-display text-lg font-bold text-ink mb-4">Assets, month end</h2>
               <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {report.assetBreakdown.length === 0 ? (
-                      <tr>
-                        <td className="px-4 py-6 text-slate text-center">No assets recorded yet.</td>
-                      </tr>
-                    ) : (
-                      report.assetBreakdown.map((a) => (
-                        <tr key={a.id} className="border-t border-line/70 first:border-t-0">
-                          <td className="px-4 py-2.5 text-ink">{a.name}</td>
-                          <td className="px-4 py-2.5 text-slate text-xs">{a.type}</td>
-                          <td className="px-4 py-2.5 text-right text-xs text-slate font-mono mono-num">
-                            {a.value >= 0 ? percent(a.percentage) : ''}
-                          </td>
-                          <td
-                            className={`px-4 py-2.5 text-right font-mono mono-num ${
-                              a.value < 0 ? 'text-clay' : 'text-ink'
-                            }`}
-                          >
-                            <Money value={a.value} />
-                          </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {report.assetBreakdown.length === 0 ? (
+                        <tr>
+                          <td className="px-4 py-6 text-slate text-center">No assets recorded yet.</td>
                         </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+                      ) : (
+                        report.assetBreakdown.map((a) => (
+                          <tr key={a.id} className="border-t border-line/70 first:border-t-0">
+                            <td className="px-4 py-2.5 text-ink whitespace-nowrap">{a.name}</td>
+                            <td className="px-4 py-2.5 text-slate text-xs whitespace-nowrap">{a.type}</td>
+                            <td className="px-4 py-2.5 text-right text-xs text-slate font-mono mono-num whitespace-nowrap">
+                              {a.value >= 0 ? percent(a.percentage) : ''}
+                            </td>
+                            <td
+                              className={`px-4 py-2.5 text-right font-mono mono-num whitespace-nowrap ${
+                                a.value < 0 ? 'text-clay' : 'text-ink'
+                              }`}
+                            >
+                              <Money value={a.value} />
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           </div>
@@ -280,30 +282,32 @@ export default function Reports() {
               </p>
             ) : (
               <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {visibleFixed.map((f) => (
-                      <tr key={f.id} className="border-t border-line/70 first:border-t-0">
-                        <td className="px-4 py-2.5 text-ink">{f.date}</td>
-                        <td className="px-4 py-2.5 text-ink font-semibold">{f.name}</td>
-                        <td className="px-4 py-2.5">
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full text-white"
-                            style={{ backgroundColor: categoryColor[f.category] || '#6B7280' }}
-                          >
-                            {f.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-slate text-xs">
-                          {assets.find((a) => a.id === f.asset_id)?.name || '—'}
-                        </td>
-                        <td className="px-4 py-2.5 text-right font-mono mono-num text-ink">
-                          <Money value={f.amount} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {visibleFixed.map((f) => (
+                        <tr key={f.id} className="border-t border-line/70 first:border-t-0">
+                          <td className="px-4 py-2.5 text-ink whitespace-nowrap">{f.date}</td>
+                          <td className="px-4 py-2.5 text-ink font-semibold whitespace-nowrap">{f.name}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full text-white"
+                              style={{ backgroundColor: categoryColor[f.category] || '#6B7280' }}
+                            >
+                              {f.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate text-xs whitespace-nowrap">
+                            {assets.find((a) => a.id === f.asset_id)?.name || '—'}
+                          </td>
+                          <td className="px-4 py-2.5 text-right font-mono mono-num text-ink whitespace-nowrap">
+                            <Money value={f.amount} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
@@ -315,28 +319,30 @@ export default function Reports() {
                 {selectedCategory ? `No daily expenses in ${selectedCategory}.` : 'No daily expenses logged this month.'}
               </p>
             ) : (
-              <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden max-h-96 overflow-y-auto">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {visibleDaily.map((e) => (
-                      <tr key={e.id} className="border-t border-line/70 first:border-t-0">
-                        <td className="px-4 py-2.5 text-ink">{e.date}</td>
-                        <td className="px-4 py-2.5">
-                          <span
-                            className="text-xs px-2 py-0.5 rounded-full text-white"
-                            style={{ backgroundColor: categoryColor[e.category] || '#6B7280' }}
-                          >
-                            {e.category}
-                          </span>
-                        </td>
-                        <td className="px-4 py-2.5 text-slate">{e.description || '—'}</td>
-                        <td className="px-4 py-2.5 text-right font-mono mono-num text-ink">
-                          <Money value={e.amount} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
+                <div className="max-h-96 overflow-y-auto overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {visibleDaily.map((e) => (
+                        <tr key={e.id} className="border-t border-line/70 first:border-t-0">
+                          <td className="px-4 py-2.5 text-ink whitespace-nowrap">{e.date}</td>
+                          <td className="px-4 py-2.5 whitespace-nowrap">
+                            <span
+                              className="text-xs px-2 py-0.5 rounded-full text-white"
+                              style={{ backgroundColor: categoryColor[e.category] || '#6B7280' }}
+                            >
+                              {e.category}
+                            </span>
+                          </td>
+                          <td className="px-4 py-2.5 text-slate">{e.description || '—'}</td>
+                          <td className="px-4 py-2.5 text-right font-mono mono-num text-ink whitespace-nowrap">
+                            <Money value={e.amount} />
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>

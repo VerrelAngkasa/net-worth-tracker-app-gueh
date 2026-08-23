@@ -155,38 +155,40 @@ export default function Transfers() {
           </p>
         ) : (
           <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="ledger-rule-single text-left text-xs uppercase tracking-wider text-slate">
-                  <th className="px-4 py-2.5 font-medium">Date</th>
-                  <th className="px-4 py-2.5 font-medium">Route</th>
-                  <th className="px-4 py-2.5 font-medium">Note</th>
-                  <th className="px-4 py-2.5 font-medium text-right">Amount</th>
-                  <th className="px-4 py-2.5"></th>
-                </tr>
-              </thead>
-              <tbody>
-                {transfers.map((t) => (
-                  <tr key={t.id} className="border-t border-line/70 hover:bg-paper-dim/50">
-                    <td className="px-4 py-2.5 text-ink">{t.date}</td>
-                    <td className="px-4 py-2.5 text-ink">
-                      <span className="font-medium">{assetName(t.from_asset_id)}</span>
-                      <span className="text-primary mx-1.5">→</span>
-                      <span className="font-medium">{assetName(t.to_asset_id)}</span>
-                    </td>
-                    <td className="px-4 py-2.5 text-slate">{t.description || '—'}</td>
-                    <td className="px-4 py-2.5 text-right font-mono mono-num text-ink">
-                      <Money value={t.amount} />
-                    </td>
-                    <td className="px-4 py-2.5 text-right">
-                      <button onClick={() => onDelete(t.id)} className="text-clay text-xs font-medium hover:underline">
-                        Delete
-                      </button>
-                    </td>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="ledger-rule-single text-left text-xs uppercase tracking-wider text-slate">
+                    <th className="px-4 py-2.5 font-medium whitespace-nowrap">Date</th>
+                    <th className="px-4 py-2.5 font-medium whitespace-nowrap">Route</th>
+                    <th className="px-4 py-2.5 font-medium">Note</th>
+                    <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Amount</th>
+                    <th className="px-4 py-2.5"></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {transfers.map((t) => (
+                    <tr key={t.id} className="border-t border-line/70 hover:bg-paper-dim/50">
+                      <td className="px-4 py-2.5 text-ink whitespace-nowrap">{t.date}</td>
+                      <td className="px-4 py-2.5 text-ink whitespace-nowrap">
+                        <span className="font-medium">{assetName(t.from_asset_id)}</span>
+                        <span className="text-primary mx-1.5">→</span>
+                        <span className="font-medium">{assetName(t.to_asset_id)}</span>
+                      </td>
+                      <td className="px-4 py-2.5 text-slate">{t.description || '—'}</td>
+                      <td className="px-4 py-2.5 text-right font-mono mono-num text-ink whitespace-nowrap">
+                        <Money value={t.amount} />
+                      </td>
+                      <td className="px-4 py-2.5 text-right whitespace-nowrap">
+                        <button onClick={() => onDelete(t.id)} className="text-clay text-xs font-medium hover:underline">
+                          Delete
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         )}
       </div>

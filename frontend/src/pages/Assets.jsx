@@ -154,45 +154,47 @@ export default function Assets() {
             <div key={g.value}>
               <h3 className="text-xs uppercase tracking-wider text-slate font-semibold mb-2">{g.label}</h3>
               <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
-                <table className="w-full text-sm">
-                  <tbody>
-                    {g.items.map((a) => (
-                      <tr key={a.id} className="border-t border-line/70 first:border-t-0 hover:bg-paper-dim/50">
-                        <td className="px-4 py-3 text-ink font-medium">{a.name}</td>
-                        <td className="px-4 py-3 text-slate">{a.notes}</td>
-                        <td className="px-4 py-3 text-right">
-                          {a.currentValue >= 0 && (
-                            <span className="text-xs text-slate font-mono mono-num mr-2">{percent(a.percentage)}</span>
-                          )}
-                        </td>
-                        <td
-                          className={`px-4 py-3 text-right font-mono mono-num font-semibold ${
-                            a.currentValue < 0 ? 'text-clay' : 'text-ink'
-                          }`}
-                        >
-                          <Money value={a.currentValue} />
-                        </td>
-                        <td className="px-4 py-3 text-right whitespace-nowrap">
-                          <button
-                            onClick={() => setHistoryAsset(a)}
-                            className="text-ink text-xs font-medium hover:underline mr-3"
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {g.items.map((a) => (
+                        <tr key={a.id} className="border-t border-line/70 first:border-t-0 hover:bg-paper-dim/50">
+                          <td className="px-4 py-3 text-ink font-medium whitespace-nowrap">{a.name}</td>
+                          <td className="px-4 py-3 text-slate">{a.notes}</td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            {a.currentValue >= 0 && (
+                              <span className="text-xs text-slate font-mono mono-num mr-2">{percent(a.percentage)}</span>
+                            )}
+                          </td>
+                          <td
+                            className={`px-4 py-3 text-right font-mono mono-num font-semibold whitespace-nowrap ${
+                              a.currentValue < 0 ? 'text-clay' : 'text-ink'
+                            }`}
                           >
-                            History
-                          </button>
-                          <button
-                            onClick={() => setUpdatingAsset(a)}
-                            className="text-primary text-xs font-medium hover:underline mr-3"
-                          >
-                            Update value
-                          </button>
-                          <button onClick={() => onArchive(a)} className="text-clay text-xs font-medium hover:underline">
-                            Archive
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+                            <Money value={a.currentValue} />
+                          </td>
+                          <td className="px-4 py-3 text-right whitespace-nowrap">
+                            <button
+                              onClick={() => setHistoryAsset(a)}
+                              className="text-ink text-xs font-medium hover:underline mr-3"
+                            >
+                              History
+                            </button>
+                            <button
+                              onClick={() => setUpdatingAsset(a)}
+                              className="text-primary text-xs font-medium hover:underline mr-3"
+                            >
+                              Update value
+                            </button>
+                            <button onClick={() => onArchive(a)} className="text-clay text-xs font-medium hover:underline">
+                              Archive
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           ))}
@@ -324,7 +326,7 @@ function HistoryModal({ asset, onClose, onChanged }) {
           balance.
         </p>
 
-        <div className="flex-1 overflow-y-auto -mx-2 px-2">
+        <div className="flex-1 overflow-y-auto overflow-x-auto -mx-2 px-2">
           {loading ? (
             <p className="text-slate text-sm">Loading…</p>
           ) : values.length === 0 ? (
@@ -334,8 +336,8 @@ function HistoryModal({ asset, onClose, onChanged }) {
               <tbody>
                 {values.map((v, i) => (
                   <tr key={v.id} className="border-t border-line/70 first:border-t-0">
-                    <td className="py-2.5 text-ink">{v.date}</td>
-                    <td className="py-2.5 text-right font-mono mono-num text-ink">
+                    <td className="py-2.5 text-ink whitespace-nowrap">{v.date}</td>
+                    <td className="py-2.5 text-right font-mono mono-num text-ink whitespace-nowrap">
                       <Money value={v.value} />
                       {i === 0 && (
                         <span className="ml-2 text-[10px] uppercase tracking-wide text-primary font-semibold">
@@ -343,7 +345,7 @@ function HistoryModal({ asset, onClose, onChanged }) {
                         </span>
                       )}
                     </td>
-                    <td className="py-2.5 text-right pl-3">
+                    <td className="py-2.5 text-right pl-3 whitespace-nowrap">
                       <button
                         onClick={() => onDeleteEntry(v.id)}
                         className="text-clay text-xs font-medium hover:underline"
