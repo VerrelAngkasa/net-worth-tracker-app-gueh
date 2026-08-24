@@ -25,7 +25,7 @@ types.setTypeParser(1184 /* timestamptz */, (val) => val);
 // signed, but the pooler's chain isn't always in Node's default trust store,
 // so this defaults to permissive verification. Set DATABASE_SSL=false only
 // for a local/self-hosted Postgres you're testing against without TLS.
-const ssl = process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: false };
+const ssl = process.env.DATABASE_SSL === 'false' ? false : { rejectUnauthorized: true };
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,

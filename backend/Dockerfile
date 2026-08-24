@@ -16,4 +16,4 @@ COPY . .
 
 EXPOSE 3000
 
-CMD ["node", "src/server.js"]
+USER non-root CMD ["node", "src/server.js"]
