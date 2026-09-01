@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import api from '../lib/api';
+import api, { monthBounds } from '../lib/api';
 import Money from '../components/Money';
+import MonthSwitcher from '../components/MonthSwitcher';
+import { useMonth } from '../lib/useMonth';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function Transfers() {
+  const { year, month, shift, isCurrentMonth } = useMonth();
   const [transfers, setTransfers] = useState([]);
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -14,19 +17,27 @@ export default function Transfers() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.get('/transfers'), api.get('/assets')]).then(([t, a]) => {
-      setTransfers(t.data);
-      setAssets(a.data);
-      setLoading(false);
-      setForm((f) => ({
-        ...f,
-        fromAssetId: f.fromAssetId || a.data[0]?.id || '',
-        toAssetId: f.toAssetId || a.data[1]?.id || '',
-      }));
-    });
+    const { start, end } = monthBounds(year, month);
+    Promise.all([api.get('/transfers', { params: { from: start, to: end } }), api.get('/assets')]).then(
+      ([t, a]) => {
+        setTransfers(t.data);
+        setAssets(a.data);
+        setLoading(false);
+        setForm((f) => ({
+          ...f,
+          fromAssetId: f.fromAssetId || a.data[0]?.id || '',
+          toAssetId: f.toAssetId || a.data[1]?.id || '',
+        }));
+      }
+    );
   };
 
-  useEffect(load, []);
+  useEffect(load, [year, month]);
+
+  useEffect(() => {
+    const { start } = monthBounds(year, month);
+    setForm((f) => ({ ...f, date: isCurrentMonth ? todayISO() : start }));
+  }, [year, month, isCurrentMonth]);
 
   const assetName = (id) => assets.find((a) => a.id === id)?.name || '—';
 
@@ -64,9 +75,12 @@ export default function Transfers() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-ink">Transfers</h1>
-        <p className="text-slate mt-1">Move money between pockets — e.g. topping up your Emergency Fund from Payroll.</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-ink">Transfers</h1>
+          <p className="text-slate mt-1">Move money between pockets — e.g. topping up your Emergency Fund from Payroll.</p>
+        </div>
+        <MonthSwitcher year={year} month={month} onShift={shift} />
       </div>
 
       {assets.length < 2 ? (
@@ -151,7 +165,7 @@ export default function Transfers() {
           <p className="text-slate text-sm">Loading…</p>
         ) : transfers.length === 0 ? (
           <p className="text-slate text-sm bg-card border border-line rounded-2xl shadow-sm p-6 text-center">
-            No transfers yet.
+            No transfers this month.
           </p>
         ) : (
           <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">

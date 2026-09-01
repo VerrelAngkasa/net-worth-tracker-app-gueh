@@ -40,6 +40,16 @@ export const monthLabel = (year, month) =>
     timeZone: 'UTC',
   });
 
+// Inclusive YYYY-MM-DD start/end for a given year/month, for scoping list
+// fetches (Daily Expenses, Fixed Expenses, Income, Transfers) to one month
+// at a time instead of loading every entry ever recorded.
+export const monthBounds = (year, month) => {
+  const start = `${year}-${String(month).padStart(2, '0')}-01`;
+  const lastDay = new Date(Date.UTC(year, month, 0)).getUTCDate();
+  const end = `${year}-${String(month).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+  return { start, end };
+};
+
 export const percent = (n) => `${Number(n || 0).toFixed(1)}%`;
 
 export const ASSET_TYPES = [

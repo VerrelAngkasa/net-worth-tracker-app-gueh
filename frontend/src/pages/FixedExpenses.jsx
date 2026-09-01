@@ -1,14 +1,13 @@
 import { useEffect, useState } from 'react';
-import api, { EXPENSE_CATEGORIES } from '../lib/api';
+import api, { EXPENSE_CATEGORIES, monthBounds } from '../lib/api';
 import Money from '../components/Money';
+import MonthSwitcher from '../components/MonthSwitcher';
+import { useMonth } from '../lib/useMonth';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
-const thisMonth = () => {
-  const d = new Date();
-  return { year: d.getFullYear(), month: d.getMonth() + 1 };
-};
 
 export default function FixedExpenses() {
+  const { year, month, shift, isCurrentMonth } = useMonth();
   const [items, setItems] = useState([]);
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,14 +25,23 @@ export default function FixedExpenses() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.get('/fixed-expenses'), api.get('/assets')]).then(([f, a]) => {
-      setItems(f.data);
-      setAssets(a.data);
-      setLoading(false);
-    });
+    const { start, end } = monthBounds(year, month);
+    Promise.all([api.get('/fixed-expenses', { params: { from: start, to: end } }), api.get('/assets')]).then(
+      ([f, a]) => {
+        setItems(f.data);
+        setAssets(a.data);
+        setLoading(false);
+      }
+    );
   };
 
-  useEffect(load, []);
+  useEffect(load, [year, month]);
+
+  useEffect(() => {
+    const { start } = monthBounds(year, month);
+    setForm((f) => ({ ...f, date: isCurrentMonth ? todayISO() : start }));
+    setDuplicateMsg('');
+  }, [year, month, isCurrentMonth]);
 
   const assetName = (id) => assets.find((a) => a.id === id)?.name;
 
@@ -61,23 +69,25 @@ export default function FixedExpenses() {
     load();
   };
 
+  // Copies last month's bills into whichever month you're currently
+  // viewing — not necessarily the real calendar "this month" — so it stays
+  // useful when catching up on a past month or planning ahead.
   const onDuplicateLastMonth = async () => {
     setDuplicateMsg('');
     setDuplicating(true);
     try {
-      const { year, month } = thisMonth();
       const prevTotal = year * 12 + (month - 1) - 1;
       const fromYear = Math.floor(prevTotal / 12);
       const fromMonth = (prevTotal % 12) + 1;
       const res = await api.post('/fixed-expenses/duplicate', { fromYear, fromMonth, toYear: year, toMonth: month });
       setDuplicateMsg(
         res.data.created.length === 0
-          ? "No fixed expenses found in last month to copy."
-          : `Copied ${res.data.created.length} item${res.data.created.length === 1 ? '' : 's'} from last month.`
+          ? "No fixed expenses found in the previous month to copy."
+          : `Copied ${res.data.created.length} item${res.data.created.length === 1 ? '' : 's'} from the previous month.`
       );
       load();
     } catch (err) {
-      setDuplicateMsg(err.response?.data?.error || 'Could not duplicate last month.');
+      setDuplicateMsg(err.response?.data?.error || 'Could not duplicate the previous month.');
     } finally {
       setDuplicating(false);
     }
@@ -87,7 +97,7 @@ export default function FixedExpenses() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-start justify-between flex-wrap gap-3">
+      <div className="flex items-start justify-between flex-wrap gap-4">
         <div>
           <h1 className="font-display text-3xl font-bold text-ink">Fixed monthly expenses</h1>
           <p className="text-slate mt-1">
@@ -95,13 +105,17 @@ export default function FixedExpenses() {
             editing or deleting this month's rent never touches last month's.
           </p>
         </div>
+        <MonthSwitcher year={year} month={month} onShift={shift} />
+      </div>
+
+      <div className="flex justify-end -mt-4">
         <div className="text-right">
           <button
             onClick={onDuplicateLastMonth}
             disabled={duplicating}
             className="border border-line text-ink font-semibold rounded-xl px-4 py-2 text-sm hover:bg-paper-dim transition-colors disabled:opacity-60"
           >
-            {duplicating ? 'Copying…' : 'Copy last month\u2019s bills to this month'}
+            {duplicating ? 'Copying…' : "Copy previous month's bills here"}
           </button>
           {duplicateMsg && <p className="text-xs text-slate mt-1.5">{duplicateMsg}</p>}
         </div>
@@ -194,7 +208,7 @@ export default function FixedExpenses() {
           <p className="text-slate text-sm">Loading…</p>
         ) : items.length === 0 ? (
           <p className="text-slate text-sm bg-card border border-line rounded-2xl shadow-sm p-6 text-center">
-            No fixed expenses yet. Add rent, subscriptions, or bills above.
+            No fixed expenses this month. Add rent, subscriptions, or bills above.
           </p>
         ) : (
           <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">

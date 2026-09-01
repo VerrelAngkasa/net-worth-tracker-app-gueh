@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
-import api, { EXPENSE_CATEGORIES } from '../lib/api';
+import api, { EXPENSE_CATEGORIES, monthBounds } from '../lib/api';
 import Money from '../components/Money';
+import MonthSwitcher from '../components/MonthSwitcher';
+import { useMonth } from '../lib/useMonth';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
 export default function Expenses() {
+  const { year, month, shift, isCurrentMonth } = useMonth();
   const [expenses, setExpenses] = useState([]);
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,14 +23,23 @@ export default function Expenses() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.get('/expenses'), api.get('/assets')]).then(([e, a]) => {
+    const { start, end } = monthBounds(year, month);
+    Promise.all([api.get('/expenses', { params: { from: start, to: end } }), api.get('/assets')]).then(([e, a]) => {
       setExpenses(e.data);
       setAssets(a.data);
       setLoading(false);
     });
   };
 
-  useEffect(load, []);
+  useEffect(load, [year, month]);
+
+  // When you switch months, default new entries to a sensible date in that
+  // month instead of leaving it pointed at today (or worse, a date outside
+  // the month you're currently looking at).
+  useEffect(() => {
+    const { start } = monthBounds(year, month);
+    setForm((f) => ({ ...f, date: isCurrentMonth ? todayISO() : start }));
+  }, [year, month, isCurrentMonth]);
 
   const assetName = (id) => assets.find((a) => a.id === id)?.name;
 
@@ -59,9 +71,12 @@ export default function Expenses() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-ink">Daily expenses</h1>
-        <p className="text-slate mt-1">Log the day-to-day spending — groceries, coffee, gas, whatever comes up.</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-ink">Daily expenses</h1>
+          <p className="text-slate mt-1">Log the day-to-day spending — groceries, coffee, gas, whatever comes up.</p>
+        </div>
+        <MonthSwitcher year={year} month={month} onShift={shift} />
       </div>
 
       <form onSubmit={onSubmit} className="bg-card border border-line rounded-2xl shadow-sm p-5 grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
@@ -151,7 +166,7 @@ export default function Expenses() {
           <p className="text-slate text-sm">Loading…</p>
         ) : expenses.length === 0 ? (
           <p className="text-slate text-sm bg-card border border-line rounded-2xl shadow-sm p-6 text-center">
-            No expenses yet. Add your first one above.
+            No expenses logged this month.
           </p>
         ) : (
           <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">

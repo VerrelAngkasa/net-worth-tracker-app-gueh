@@ -1,11 +1,14 @@
 import { useEffect, useState } from 'react';
-import api from '../lib/api';
+import api, { monthBounds } from '../lib/api';
 import Money from '../components/Money';
+import MonthSwitcher from '../components/MonthSwitcher';
+import { useMonth } from '../lib/useMonth';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const SOURCE_SUGGESTIONS = ['Salary', 'Bonus', 'Gift', 'Interest', 'Refund', 'Side income', 'Other'];
 
 export default function Income() {
+  const { year, month, shift, isCurrentMonth } = useMonth();
   const [entries, setEntries] = useState([]);
   const [assets, setAssets] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -21,7 +24,8 @@ export default function Income() {
 
   const load = () => {
     setLoading(true);
-    Promise.all([api.get('/income'), api.get('/assets')]).then(([i, a]) => {
+    const { start, end } = monthBounds(year, month);
+    Promise.all([api.get('/income', { params: { from: start, to: end } }), api.get('/assets')]).then(([i, a]) => {
       setEntries(i.data);
       setAssets(a.data);
       setLoading(false);
@@ -29,7 +33,12 @@ export default function Income() {
     });
   };
 
-  useEffect(load, []);
+  useEffect(load, [year, month]);
+
+  useEffect(() => {
+    const { start } = monthBounds(year, month);
+    setForm((f) => ({ ...f, date: isCurrentMonth ? todayISO() : start }));
+  }, [year, month, isCurrentMonth]);
 
   const assetName = (id) => assets.find((a) => a.id === id)?.name || '—';
 
@@ -65,9 +74,12 @@ export default function Income() {
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="font-display text-3xl font-bold text-ink">Income</h1>
-        <p className="text-slate mt-1">Money landing in a pocket — salary, bonuses, transfers in, gifts.</p>
+      <div className="flex items-center justify-between flex-wrap gap-4">
+        <div>
+          <h1 className="font-display text-3xl font-bold text-ink">Income</h1>
+          <p className="text-slate mt-1">Money landing in a pocket — salary, bonuses, transfers in, gifts.</p>
+        </div>
+        <MonthSwitcher year={year} month={month} onShift={shift} />
       </div>
 
       {assets.length === 0 ? (
@@ -159,7 +171,7 @@ export default function Income() {
           <p className="text-slate text-sm">Loading…</p>
         ) : entries.length === 0 ? (
           <p className="text-slate text-sm bg-card border border-line rounded-2xl shadow-sm p-6 text-center">
-            No income logged yet.
+            No income logged this month.
           </p>
         ) : (
           <div className="bg-card border border-line rounded-2xl shadow-sm overflow-hidden">
