@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import api, { EXPENSE_CATEGORIES, monthBounds } from '../lib/api';
 import Money from '../components/Money';
 import MonthSwitcher from '../components/MonthSwitcher';
+import SortableAmountHeader from '../components/SortableAmountHeader';
 import { useMonth } from '../lib/useMonth';
+import { useAmountSort } from '../lib/useAmountSort';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 
@@ -67,6 +69,7 @@ export default function Expenses() {
     load();
   };
 
+  const { sorted: sortedExpenses, dir: sortDir, toggle: toggleSort } = useAmountSort(expenses);
   const total = expenses.reduce((s, e) => s + e.amount, 0);
 
   return (
@@ -178,12 +181,12 @@ export default function Expenses() {
                     <th className="px-4 py-2.5 font-medium whitespace-nowrap">Category</th>
                     <th className="px-4 py-2.5 font-medium whitespace-nowrap">Pocket</th>
                     <th className="px-4 py-2.5 font-medium">Description</th>
-                    <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Amount</th>
+                    <SortableAmountHeader dir={sortDir} onToggle={toggleSort} />
                     <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {expenses.map((e) => (
+                  {sortedExpenses.map((e) => (
                     <tr key={e.id} className="border-t border-line/70 hover:bg-paper-dim/50">
                       <td className="px-4 py-2.5 text-ink whitespace-nowrap">{e.date}</td>
                       <td className="px-4 py-2.5 whitespace-nowrap">

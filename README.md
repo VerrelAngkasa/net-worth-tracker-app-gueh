@@ -106,8 +106,9 @@ the moment it's used.
 This app is built around **pockets** — the Assets page is really a list of
 accounts you move money in and out of (Payroll Account, Emergency Fund,
 Holiday Savings, an investment account, etc.), plus any illiquid assets
-(property, vehicles) or liabilities (loans, enter as negative values) you
-want to include in net worth.
+(property, vehicles) you want to include in net worth. Credit card debt has
+its own page — see **Credit Cards** below — rather than being tracked as a
+negative-balance pocket.
 
 - **Income** — log money landing in a pocket (salary, bonus, gift...). It
   increases that pocket's balance immediately.
@@ -156,10 +157,21 @@ correct a wrong amount without needing to archive the whole asset.
 ## 7. Using the app
 
 - **Dashboard** — net worth headline, 12-month trend, and quick totals for
-  assets, liabilities, income this month, and spending this month.
+  assets, income this month, spending this month, and savings rate.
 - **Daily Expenses** — one-off spending with an optional pocket.
 - **Fixed Expenses** — one independent entry per month; use "Copy last
   month's bills" to carry recurring ones forward without linking months.
+- **Credit Cards** — installment purchases and one-off statements. Add a
+  bill with a total, number of installments, and an optional per-installment
+  amount (defaults to an even split). Recording a payment shows how much is
+  left, marks the next due date, and optionally deducts a pocket. Deleting a
+  payment reverses its effect on the pocket and adds the amount back to what
+  remains on the bill. A bill is marked paid off when the sum of its payments
+  reaches the total.
+- **Amount sorting** — every list page (Daily Expenses, Fixed Expenses,
+  Income, Transfers) has a clickable Amount column header that cycles between
+  high→low and low→high. Click again to go back to the default (newest
+  first) by switching months or refreshing.
 - **Income** — money landing in a pocket, with a source (Salary, Bonus, etc).
 - **Transfers** — move money between two pockets.
 - **Assets** — every pocket and asset, with percentage of total, value

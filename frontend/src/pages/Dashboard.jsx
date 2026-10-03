@@ -64,9 +64,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <StatCard label="Assets" value={summary.totalAssets} tone="ledger" />
-        <StatCard label="Liabilities" value={summary.totalLiabilities} tone="clay" />
         <StatCard label="Income" value={summary.monthToDateIncome} tone="ledger" />
         <StatCard label="Total spent" value={monthSpent} tone="clay" />
         <div className="card-pop bg-card border border-line rounded-2xl shadow-sm p-4 min-w-0">

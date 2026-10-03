@@ -48,9 +48,7 @@ export default function Assets() {
     load();
   };
 
-  const totalAssets = assets.filter((a) => a.currentValue >= 0).reduce((s, a) => s + a.currentValue, 0);
-  const totalLiabilities = assets.filter((a) => a.currentValue < 0).reduce((s, a) => s + Math.abs(a.currentValue), 0);
-
+  const totalAssets = assets.reduce((s, a) => s + a.currentValue, 0);
   const grouped = ASSET_TYPES.map((t) => ({
     ...t,
     items: assets.filter((a) => a.type === t.value),
@@ -63,15 +61,9 @@ export default function Assets() {
         <p className="text-slate mt-1">Track what you own and owe. Update values whenever a balance changes.</p>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="card-pop bg-card border border-line rounded-2xl shadow-sm p-4 min-w-0">
-          <p className="text-xs uppercase tracking-wider text-slate font-semibold mb-2">Total assets</p>
-          <Money value={totalAssets} className="font-mono mono-num text-2xl font-bold text-ledger" />
-        </div>
-        <div className="card-pop bg-card border border-line rounded-2xl shadow-sm p-4 min-w-0">
-          <p className="text-xs uppercase tracking-wider text-slate font-semibold mb-2">Total liabilities</p>
-          <Money value={totalLiabilities} className="font-mono mono-num text-2xl font-bold text-clay" />
-        </div>
+      <div className="card-pop bg-card border border-line rounded-2xl shadow-sm p-4 max-w-xs">
+        <p className="text-xs uppercase tracking-wider text-slate font-semibold mb-2">Total across pockets</p>
+        <Money value={totalAssets} className="font-mono mono-num text-2xl font-bold text-ledger" />
       </div>
 
       <form onSubmit={onSubmit} className="bg-card border border-line rounded-2xl shadow-sm p-5 grid grid-cols-1 sm:grid-cols-6 gap-3 items-end">
@@ -106,7 +98,6 @@ export default function Assets() {
             value={form.initialValue}
             onChange={(e) => setForm({ ...form, initialValue: e.target.value })}
             placeholder="0"
-            title="Use a negative number for liabilities like loans"
             className="w-full border border-line rounded-xl px-2.5 py-2 bg-paper text-sm font-mono focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -131,7 +122,6 @@ export default function Assets() {
         </div>
         <div className="sm:col-span-6">
           {error && <p className="text-clay text-sm mb-2">{error}</p>}
-          <p className="text-xs text-slate mb-2">Tip: enter a negative value for liabilities like loans or credit card debt.</p>
           <button
             type="submit"
             disabled={submitting}

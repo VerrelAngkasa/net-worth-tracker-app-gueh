@@ -187,7 +187,7 @@ router.get('/summary', async (req, res) => {
   const prevBounds = monthBounds(prev.year, prev.month);
 
   const [
-    { total: netWorth, breakdown },
+    { total: netWorth },
     assets,
     monthToDateExpensesRow,
     monthToDateIncomeRow,
@@ -209,18 +209,13 @@ router.get('/summary', async (req, res) => {
     netWorthAsOf(req.userId, prevBounds.end),
   ]);
 
-  let totalAssets = 0;
-  let totalLiabilities = 0;
-  for (const b of breakdown) {
-    if (b.value >= 0) totalAssets += b.value;
-    else totalLiabilities += Math.abs(b.value);
-  }
+  // No liabilities tracked, so total assets is simply everything held across pockets.
+  const totalAssets = netWorth;
   const totalFixed = fixed.reduce((s, e) => s + e.amount, 0);
 
   res.json({
     netWorth,
     totalAssets,
-    totalLiabilities,
     assetCount: assets.length,
     monthToDateExpenses: monthToDateExpensesRow.total,
     monthToDateIncome: monthToDateIncomeRow.total,

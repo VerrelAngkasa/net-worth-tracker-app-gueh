@@ -59,7 +59,6 @@ export const ASSET_TYPES = [
   { value: 'investment', label: 'Investment' },
   { value: 'gold', label: 'Gold' },
   { value: 'crypto', label: 'Crypto' },
-  { value: 'liability', label: 'Liability (loan, debt)' },
   { value: 'other', label: 'Other' },
 ];
 

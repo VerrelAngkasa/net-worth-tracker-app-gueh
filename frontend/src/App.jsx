@@ -11,6 +11,7 @@ import FixedExpenses from './pages/FixedExpenses';
 import Income from './pages/Income';
 import Transfers from './pages/Transfers';
 import Assets from './pages/Assets';
+import CardBills from './pages/CardBills';
 import Reports from './pages/Reports';
 import Settings from './pages/Settings';
 
@@ -47,6 +48,7 @@ function AppRoutes() {
           <Route path="income" element={<Income />} />
           <Route path="transfers" element={<Transfers />} />
           <Route path="assets" element={<Assets />} />
+          <Route path="card-bills" element={<CardBills />} />
           <Route path="reports" element={<Reports />} />
           <Route path="settings" element={<Settings />} />
           <Route path="*" element={<Navigate to="/" replace />} />

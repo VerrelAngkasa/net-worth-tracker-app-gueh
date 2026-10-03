@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { to: '/income', label: 'Income' },
   { to: '/transfers', label: 'Transfers' },
   { to: '/assets', label: 'Assets' },
+  { to: '/card-bills', label: 'Credit Cards' },
   { to: '/reports', label: 'Monthly Report' },
 ];
 

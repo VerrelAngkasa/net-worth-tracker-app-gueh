@@ -2,7 +2,9 @@ import { useEffect, useState } from 'react';
 import api, { monthBounds } from '../lib/api';
 import Money from '../components/Money';
 import MonthSwitcher from '../components/MonthSwitcher';
+import SortableAmountHeader from '../components/SortableAmountHeader';
 import { useMonth } from '../lib/useMonth';
+import { useAmountSort } from '../lib/useAmountSort';
 
 const todayISO = () => new Date().toISOString().slice(0, 10);
 const SOURCE_SUGGESTIONS = ['Salary', 'Bonus', 'Gift', 'Interest', 'Refund', 'Side income', 'Other'];
@@ -70,6 +72,7 @@ export default function Income() {
     load();
   };
 
+  const { sorted: sortedEntries, dir: sortDir, toggle: toggleSort } = useAmountSort(entries);
   const total = entries.reduce((s, e) => s + e.amount, 0);
 
   return (
@@ -183,12 +186,12 @@ export default function Income() {
                     <th className="px-4 py-2.5 font-medium whitespace-nowrap">Pocket</th>
                     <th className="px-4 py-2.5 font-medium whitespace-nowrap">Source</th>
                     <th className="px-4 py-2.5 font-medium">Note</th>
-                    <th className="px-4 py-2.5 font-medium text-right whitespace-nowrap">Amount</th>
+                    <SortableAmountHeader dir={sortDir} onToggle={toggleSort} />
                     <th className="px-4 py-2.5"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {entries.map((e) => (
+                  {sortedEntries.map((e) => (
                     <tr key={e.id} className="border-t border-line/70 hover:bg-paper-dim/50">
                       <td className="px-4 py-2.5 text-ink whitespace-nowrap">{e.date}</td>
                       <td className="px-4 py-2.5 text-ink font-medium whitespace-nowrap">{assetName(e.asset_id)}</td>

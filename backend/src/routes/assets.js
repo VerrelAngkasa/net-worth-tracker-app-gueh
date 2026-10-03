@@ -25,7 +25,7 @@ router.get('/', async (req, res) => {
     assets.map(async (a) => ({ ...a, currentValue: await latestValueForAsset(a.id) }))
   );
 
-  // Percentage is of total *positive* value (liabilities shown as negative, excluded from the base)
+  // Percentage is of total *positive* value (a pocket that's overdrawn below zero is excluded from the base)
   const totalPositive = withValues.reduce((s, a) => s + (a.currentValue > 0 ? a.currentValue : 0), 0);
   const withPercentage = withValues.map((a) => ({
     ...a,
