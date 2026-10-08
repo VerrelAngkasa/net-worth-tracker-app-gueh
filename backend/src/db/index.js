@@ -228,6 +228,32 @@ async function migrate() {
       UNIQUE (user_id, year, month)
     );
 
+    -- Credit card bills: one row per installment plan or one-off statement.
+    -- "Remaining" is always derived (total_amount minus sum of payments) so
+    -- recording or deleting a payment can never leave the stored figure stale.
+    CREATE TABLE IF NOT EXISTS card_bills (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      card_name TEXT NOT NULL,
+      name TEXT NOT NULL,
+      total_amount NUMERIC(15,2) NOT NULL,
+      installment_months INTEGER NOT NULL DEFAULT 1,
+      monthly_amount NUMERIC(15,2) NOT NULL,
+      start_date DATE NOT NULL,
+      notes TEXT,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
+    CREATE TABLE IF NOT EXISTS card_bill_payments (
+      id BIGSERIAL PRIMARY KEY,
+      user_id BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      bill_id BIGINT NOT NULL REFERENCES card_bills(id) ON DELETE CASCADE,
+      asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL,
+      date DATE NOT NULL,
+      amount NUMERIC(15,2) NOT NULL,
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    );
+
     CREATE INDEX IF NOT EXISTS idx_expenses_user_date ON expenses(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_expenses_asset ON expenses(asset_id);
     CREATE INDEX IF NOT EXISTS idx_fixed_expenses_user_date ON fixed_expenses(user_id, date);
@@ -237,6 +263,8 @@ async function migrate() {
     CREATE INDEX IF NOT EXISTS idx_income_user_date ON income_entries(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_transfers_user_date ON transfers(user_id, date);
     CREATE INDEX IF NOT EXISTS idx_quotas_user_period ON spending_quotas(user_id, year, month);
+    CREATE INDEX IF NOT EXISTS idx_card_bills_user ON card_bills(user_id);
+    CREATE INDEX IF NOT EXISTS idx_card_bill_payments_bill ON card_bill_payments(bill_id);
   `);
 
   // Idempotent column additions for people upgrading an existing database —
@@ -246,6 +274,12 @@ async function migrate() {
     ALTER TABLE users ADD COLUMN IF NOT EXISTS idle_timeout_minutes INTEGER NOT NULL DEFAULT 15;
     ALTER TABLE spending_quotas ADD COLUMN IF NOT EXISTS asset_id BIGINT REFERENCES assets(id) ON DELETE SET NULL;
   `);
+
+  // Liabilities are no longer a thing in this app. Anything previously filed
+  // under that type becomes "other" so it keeps showing up in the Assets list
+  // (unknown types would otherwise be silently dropped from the grouped view).
+  // Idempotent — a no-op once nothing is left with the old type.
+  await pool.query(`UPDATE assets SET type = 'other' WHERE type = 'liability'`);
 }
 
 module.exports = { pool, query, queryOne, run, migrate };
